@@ -1,7 +1,5 @@
 const express = require('express');
 
-const emojis = require('./emojis');
-
 const router = express.Router();
 
 router.get('/', (req, res) => {
@@ -10,6 +8,10 @@ router.get('/', (req, res) => {
   });
 });
 
-router.use('/emojis', emojis);
+const auth = require('./auth/auth.routes');
+const users = require('./users/users.routes');
+
+router.use('/auth', auth);
+router.use('/users', users);
 
 module.exports = router;
