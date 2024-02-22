@@ -11,12 +11,19 @@ datasource db {
 }
 
 model User {
-  id            String         @id @unique @default(uuid())
-  email         String         @unique
-  password      String
-  refreshTokens RefreshToken[]
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id               String         @id @unique @default(uuid())
+  email            String         @unique
+  password         String
+  username         String
+  emailConfirmed   Boolean        @default(false)
+  confirmationCode String         @unique
+  isDarkMode       Boolean        @default(false)
+  refreshTokens    RefreshToken[]
+  lastLoginDate    DateTime       @default(now())
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  goals            Goal[]
+  Task             Task[]
 }
 
 model RefreshToken {
@@ -27,4 +34,37 @@ model RefreshToken {
   revoked     Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Goal {
+  id          String   @id @unique @default(uuid())
+  goalName    String
+  deadline    DateTime
+  weeklyHours Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tasks       Task[]
+  userId      String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String   @id @unique @default(uuid())
+  taskName    String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  cycles      Cycle[]
+  isCompleted Boolean
+  userId      String
+  goalId      String
+}
+
+model Cycle {
+  id            String   @id @unique @default(uuid())
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
+  interruptedAt DateTime
+  taskId        String
 }
