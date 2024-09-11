@@ -12,7 +12,9 @@ const {
   findUserByResetCode,
   updateUserPassword,
   revokeRefreshTokens,
-  saveCancelationReason
+  saveCancelationReason,
+  getCancelationReasons,
+  deleteUser
 } = require('../users/users.services');
 const { generateTokens } = require('../../utils/jwt');
 const {
@@ -304,25 +306,23 @@ router.post('/cancel', async (req, res, next) => {
     }
 
     // se existe, salvar os motivos de cancelmaneto na tabela de cancelation
-    const cancelation =  await saveCancelationReason({userId, reasonsToCancel, comments})
+    await saveCancelationReason(user, reasonsToCancel, comments)
     // após salvar o cancelamento, deletar o usuario e toda sua info no 
-    if (!cancelation)
-    {
-      res.status(401);
-      throw new Error('Unauthorized');
-    }
 
-    const deleteUser = await deleteUser(userId);
+    await deleteUser(userId);
 
-    if (!deleteUserInfo) 
-      {
-        res.status(401);
-        throw new Error('Unauthorized');
-      }
-
-    res.json(accountInfo);
+    res.json('conta cancelada, usuario deletado');
   } catch (err) {
     next(err);
+  }
+});
+
+router.get('/cancellation-reasons', async (req, res) => {
+  try {
+    const reasons = await getCancelationReasons();
+    res.json(reasons);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch cancellation reasons' });
   }
 });
 

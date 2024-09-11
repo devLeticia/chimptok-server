@@ -2,21 +2,40 @@ const bcrypt = require('bcrypt');
 const { db } = require('../../utils/db');
 
 
-function saveCancelationReason (user, reasons, comment) {
-  db.cancelation.create({
-   data: {
-     userEmail: user.email,
-     accountCreatedAt: user.createdAt,
-     comment: comment || '',
-     reasons: {
-       create: reasons.map(reason => ({
-         reason
-       }))
-     }
-   }
- });
+async function saveCancelationReason(user, reasonIds, comment) {
+  try {
+
+
+    const reasons = await db.cancelationReason.findMany({
+      where: {
+        id: {
+          in: reasonIds
+        }
+      }
+    });
+   
+    console.log('----------', user)
+
+    await db.cancelation.create({
+      data: {
+        userEmail: user.email, // Ensure userEmail is included
+        accountCreatedAt: user.createdAt, // Ensure accountCreatedAt is included
+        comment: comment || '',
+        reasons: {
+          connect: reasons.map(reason => ({ id: reason.id }))
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Error saving cancellation reason:', error);
+    throw error; // Re-throw the error to be handled by the caller
+  }
 }
 
+function getCancelationReasons () {
+  const reasons = db.cancelationReason.findMany();
+  return reasons
+}
 function findUserByEmail(email) {
   return db.user.findUnique({
     where: {
@@ -149,5 +168,7 @@ module.exports = {
   findUserByResetCode,
   revokeRefreshTokens,
   getUserInformation,
-  saveCancelationReason
+  saveCancelationReason,
+  getCancelationReasons,
+  deleteUser
 };
