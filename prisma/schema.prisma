@@ -24,6 +24,7 @@ model User {
   updatedAt        DateTime       @updatedAt
   goals            Goal[]
   Task             Task[]
+  Cycle            Cycle[]
 }
 
 model RefreshToken {
@@ -63,11 +64,27 @@ model Task {
 }
 
 model Cycle {
-  id            String   @id @unique @default(uuid())
-  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
+  id            String    @id @unique @default(uuid())
+  task          Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
   minutesAmount Int
   finishAt      DateTime
-  interruptedAt DateTime
+  interruptedAt DateTime?
   taskId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+}
+model Cancelation {
+  id              String             @id @unique @default(uuid())
+  userEmail       String
+  accountCreatedAt DateTime          @default(now())
+  cancelationDate DateTime           @default(now())
+  reasons         CancelationReason[] @relation("CancelationReasons")
+  comment         String?
+}
+
+model CancelationReason {
+  id          String             @id @unique @default(uuid())
+  reason      String             @unique
+  cancelations Cancelation[]     @relation("CancelationReasons")
 }

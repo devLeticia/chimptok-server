@@ -12,6 +12,7 @@ const {
   findUserByResetCode,
   updateUserPassword,
   revokeRefreshTokens,
+  saveCancelationReason
 } = require('../users/users.services');
 const { generateTokens } = require('../../utils/jwt');
 const {
@@ -290,6 +291,39 @@ router.post('/reset-passord', async (req, res, next) => {
     next(err);
   }
   return null;
+});
+
+router.post('/cancel', async (req, res, next) => {
+  try {
+    // primeiro, verificar se usuario existe na base
+    const { userId, reasonsToCancel, comments } = req.body;
+    const user = await findUserById(userId);
+
+    if (!user) {
+      return res.status(404).send({ message: 'User Not found.' });
+    }
+
+    // se existe, salvar os motivos de cancelmaneto na tabela de cancelation
+    const cancelation =  await saveCancelationReason({userId, reasonsToCancel, comments})
+    // após salvar o cancelamento, deletar o usuario e toda sua info no 
+    if (!cancelation)
+    {
+      res.status(401);
+      throw new Error('Unauthorized');
+    }
+
+    const deleteUser = await deleteUser(userId);
+
+    if (!deleteUserInfo) 
+      {
+        res.status(401);
+        throw new Error('Unauthorized');
+      }
+
+    res.json(accountInfo);
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

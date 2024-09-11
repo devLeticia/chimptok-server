@@ -1,7 +1,8 @@
 // const { v4: uuidv4 } = require('uuid');
 const express = require('express');
-const { getAllGoals } = require('../goals/goals.service');
+const { getAllGoals, getTodaysGoal } = require('../goals/goals.service');
 const { getActiveCycle } = require('../cycles/cycles.service');
+const { getConsistencyOfTheWeek } = require('./home.service');
 
 const router = express.Router();
 
@@ -12,22 +13,28 @@ const router = express.Router();
 // 3. today's goal (goals and acomplished)
 // 4. Consiistency of the week
 
-router.get('/:userdId', async (req, res, next) => {
+router.get('/:userId', async (req, res, next) => {
   const { userId } = req.params;
   try {
-    const activeGoals = await getAllGoals(userId);
-    const activeCycle = await getActiveCycle(userId);
-    const todaysGoal = await getTodaysGoal(userId);
-    console.log(activeGoas);
-    const homeData = {
-      activeGoals,
-      activeCycle,
-      todaysGoal: {},
-      weeekConsistency: [],
-    };
-    res.data = homeData;
+    if (userId) {
+      const activeGoals = await getAllGoals(userId);
+      const activeCycle = await getActiveCycle(userId);
+      const progressOfTheDay = await getTodaysGoal(userId);
+      const consistencyOfTheWeek = await getConsistencyOfTheWeek(userId);
+
+      const homeData = {
+        userGoals: activeGoals,
+        activeCycle,
+        progressOfTheDay,
+        consistencyOfTheWeek,
+      };
+      res.status(200).json({ message: 'Goals retrieved', data: homeData });
+    }
+    return res.data = 'userId was not found';
   } catch (error) {
     next(error);
   }
   return null;
 });
+
+module.exports = router;

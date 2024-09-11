@@ -1,23 +1,28 @@
 const { db } = require('../../utils/db');
 
 async function AddCycle(
-  id,
   userId,
   taskId,
   minutesAmount,
 ) {
   try {
+    console.log('--->', minutesAmount);
     // Create the cycle in the database
+    const currentDate = new Date();
+    // Convert minutes to milliseconds
+    const finishAt = new Date(currentDate.getTime() + minutesAmount * 60000);
     const createdCycle = await db.cycle.create({
       data: {
-        id,
-        userId,
-        taskId,
         minutesAmount,
+        interruptedAt: null,
+        finishAt,
         task: {
           connect: {
             id: taskId,
           },
+        },
+        user: {
+          connect: { id: userId },
         },
       },
     });
@@ -28,6 +33,7 @@ async function AddCycle(
   }
 }
 
+// return the cycle that has not finished yet
 async function getActiveCycle(userId) {
   try {
     const now = new Date();
@@ -35,7 +41,14 @@ async function getActiveCycle(userId) {
       where: {
         userId,
         finishAt: {
-          lt: now,
+          gte: now,
+        },
+      },
+      include: {
+        task: {
+          include: {
+            goal: true, // Include the goal relation within the task relation
+          },
         },
       },
     });
@@ -54,7 +67,11 @@ async function getAllCycles(userId) {
         userId,
       },
       include: {
-        goals: true,
+        task: {
+          include: {
+            goal: true, // Include the goal relation within the task relation
+          },
+        },
       },
     });
 

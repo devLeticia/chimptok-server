@@ -11,6 +11,7 @@ router.post('/', async (req, res) => {
     taskId,
     minutesAmount,
   } = registerCycleSchema.parse(req.body);
+  console.log('minutesAmount==>', minutesAmount);
   try {
     const response = await AddCycle(
       userId,
@@ -30,18 +31,20 @@ router.get('/activeCycle/:userId', async (req, res) => {
     const response = await getActiveCycle(userId);
     if (response) return res.status(200).json({ message: 'Ciclo ativo encontrado' });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to start a new Cycle' });
+    return res.status(500).json({ error: 'Failed to retrieve active cycle' });
   }
   return null;
 });
 
-router.get('/activeCycle/:userId', async (req, res) => {
+router.get('/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
     const response = await getAllCycles(userId);
-    if (response) return res.status(200).json({ message: 'Historico de ciclos encontrado' });
+    if (response) return res.status(200).json({ message: 'Historico de ciclos encontrado', data: response });
   } catch (error) {
-    return res.status(500).json({ error: 'Failed to start a new Cycle' });
+    return res.status(500).json({ error: 'Failed to retrieve cycles history' });
   }
   return null;
 });
+
+module.exports = router;

@@ -1,6 +1,6 @@
 const express = require('express');
 const { isAuthenticated } = require('../../middlewares');
-const { findUserById, toggleUserDarkMode } = require('./users.services');
+const { findUserById, toggleUserDarkMode, getUserInformation } = require('./users.services');
 
 const router = express.Router();
 
@@ -15,9 +15,9 @@ router.get('/profile', isAuthenticated, async (req, res, next) => {
   }
 });
 
-router.post('/darkmode', isAuthenticated, async (req, res, next) => {
+router.post('/darkmode/:userId', isAuthenticated, async (req, res, next) => {
   try {
-    const { userId } = req.payload;
+    const { userId } = req.params;
     const user = await findUserById(userId);
 
     toggleUserDarkMode(user.id);
@@ -27,5 +27,17 @@ router.post('/darkmode', isAuthenticated, async (req, res, next) => {
     next(err);
   }
 });
+
+router.post('/account-info/:userId', async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+    const accountInfo = await getUserInformation(userId);
+
+    res.json(accountInfo);
+  } catch (err) {
+    next(err);
+  }
+});
+
 
 module.exports = router;

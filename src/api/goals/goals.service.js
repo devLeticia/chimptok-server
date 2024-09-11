@@ -78,8 +78,14 @@ async function getAllGoals(userId) {
       createdAt: goal.createdAt,
       deadline: goal.deadline,
       hoursPerWeek: goal.weeklyHours,
-      totalHoursSpent: 0,
-      progressPercentage: 0,
+      overallProgress: {
+        inHours: 0,
+        inPercentage: 0
+      },
+      dayProgress: {
+        inHours: 0,
+        inPercentage: 0
+      },
       status: 1,
     }));
 
@@ -101,9 +107,14 @@ async function getTodaysGoal(userId) {
         tasks: true,
       },
     });
+    const totalHoursPerWeek = goals.reduce((total, goal) => total + goal.weeklyHours, 0);
+    const goalOfTheDay = {
+      totalHoursPerWeek,
+      goalOfTheDayInHours: totalHoursPerWeek / 7,
+      minutesAccomplishedToday: 0,
+    };
 
-    console.log(goals);
-    // pra cada goal, pegar o weeklyHours  e somar, depois dividir por 7 dias da semana
+    return goalOfTheDay;
   } catch (err) {
     console.error('Error retrieving goals:', err);
     throw err; // Re-throwing the error to be handled by the caller
@@ -113,4 +124,5 @@ module.exports = {
   AddGoal,
   deleteGoal,
   getAllGoals,
+  getTodaysGoal,
 };

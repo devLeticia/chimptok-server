@@ -1,6 +1,22 @@
 const bcrypt = require('bcrypt');
 const { db } = require('../../utils/db');
 
+
+function saveCancelationReason (user, reasons, comment) {
+  db.cancelation.create({
+   data: {
+     userEmail: user.email,
+     accountCreatedAt: user.createdAt,
+     comment: comment || '',
+     reasons: {
+       create: reasons.map(reason => ({
+         reason
+       }))
+     }
+   }
+ });
+}
+
 function findUserByEmail(email) {
   return db.user.findUnique({
     where: {
@@ -85,6 +101,43 @@ async function revokeRefreshTokens(userId) {
   });
 }
 
+
+
+function daysPassedSince(dateString) {
+  // Convert the dateString to a Date object
+  const inputDate = new Date(dateString);
+
+  // Get the current date
+  const currentDate = new Date();
+
+  // Calculate the difference in milliseconds
+  const timeDifference = currentDate.getTime() - inputDate.getTime();
+
+  // Convert milliseconds to days
+  const daysPassed = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
+
+  return daysPassed;
+}
+async function getUserInformation(userId) {
+  const user = await findUserById(userId);
+  const { createdAt } = user;
+
+  const accountInfo = {
+    daysSinceSubscription: daysPassedSince(createdAt),
+    user,
+  };
+
+  return accountInfo;
+}
+
+
+
+async function deleteUser (userId) {
+  await db.user.delete({
+    where: { id: userId }
+  });
+}
+
 module.exports = {
   findUserByEmail,
   findUserById,
@@ -95,4 +148,6 @@ module.exports = {
   updateUserPassword,
   findUserByResetCode,
   revokeRefreshTokens,
+  getUserInformation,
+  saveCancelationReason
 };
