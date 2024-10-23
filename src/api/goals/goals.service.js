@@ -1,4 +1,5 @@
 const { db } = require('../../utils/db');
+const { getCycleByGoalId } = require('../cycles/cycles.service');
 
 async function AddGoal(
   goalId,
@@ -9,7 +10,6 @@ async function AddGoal(
   tasks,
 ) {
   try {
-    // Create the goal in the database
     const createdGoal = await db.goal.create({
       data: {
         id: goalId,
@@ -45,14 +45,11 @@ async function AddGoal(
 
 async function deleteGoal(goalId) {
   try {
-    // Delete the goal from the database
     await db.goal.delete({
       where: {
         id: goalId,
       },
     });
-
-    // Return success response
   } catch (err) {
     console.log(err);
     throw err;
@@ -61,7 +58,6 @@ async function deleteGoal(goalId) {
 
 async function getAllGoals(userId) {
   try {
-    // Retrieve goals from the database
     const goals = await db.goal.findMany({
       where: {
         userId,
@@ -79,20 +75,55 @@ async function getAllGoals(userId) {
       deadline: goal.deadline,
       hoursPerWeek: goal.weeklyHours,
       overallProgress: {
-        inHours: 0,
-        inPercentage: 0
+        overallExpectedHours: 0,
+        overallAccomplisedHours: 0,
+        overallCycles: 0
       },
       dayProgress: {
-        inHours: 0,
-        inPercentage: 0
+        dayExpectedHours: 0,
+        dayAccomplisedHours: 0,
+        dayCycles: 0
       },
       status: 1,
     }));
 
+    const cycles = await db.cycle.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        task: {
+          include: {
+            goal: true,
+          },
+        },
+      },
+    });
+ 
+    mappedGoals.forEach(goal => {
+       const goalCycles = cycles.filter(cycle => cycle.task.goalId === goal.id && cycle.interruptedAt === null);
+       const sumOfCyclesInMinutes = goalCycles.reduce((total, cycle) => total + cycle.minutesAmount, 0);
+       const overallAccomplisedHours =  sumOfCyclesInMinutes / 60
+        goal.overallProgress.overallExpectedHours = goal.hoursPerWeek
+        goal.overallProgress.overallAccomplisedHours = overallAccomplisedHours 
+
+        const today = new Date()
+        const totalCyclesOfTheDay =  cycles.filter(cycle => cycle.task.goalId === goal.id && cycle.interruptedAt === null &&
+          today.getFullYear() === cycle.createdAt.getFullYear() &&
+          today.getMonth() === cycle.createdAt.getMonth() &&
+          today.getDate() === cycle.createdAt.getDate()
+          );
+        const sumOfCyclesOfTheDayInMinutes = totalCyclesOfTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
+        goal.dayProgress.dayExpectedHours = goal.hoursPerWeek / 7
+        goal.dayProgress.dayAccomplisedHours = sumOfCyclesOfTheDayInMinutes / 60
+        
+      });
+
+    
     return mappedGoals;
   } catch (err) {
     console.error('Error retrieving goals:', err);
-    throw err; // Re-throwing the error to be handled by the caller
+    throw err; 
   }
 }
 
@@ -114,15 +145,94 @@ async function getTodaysGoal(userId) {
       minutesAccomplishedToday: 0,
     };
 
+    const cycles = await db.cycle.findMany({
+      where: {
+        userId,
+      },
+      include: {
+        task: {
+          include: {
+            goal: true,
+          },
+        },
+      },
+    });
+
+    todaysCycle = cycles.filter((cycle) => {
+        const today = new Date();
+        return today.getFullYear() === cycle.createdAt.getFullYear() &&
+               today.getMonth() === cycle.createdAt.getMonth() &&
+               today.getDate() === cycle.createdAt.getDate()
+               && cycle.interruptedAt === null
+      });
+
+      const minutesInDay = todaysCycle.reduce((total, cycle) => total + cycle.minutesAmount, 0);
+      const hoursInDay = minutesInDay / 60
+      goalOfTheDay.minutesAccomplishedToday = hoursInDay
+    
     return goalOfTheDay;
   } catch (err) {
     console.error('Error retrieving goals:', err);
-    throw err; // Re-throwing the error to be handled by the caller
+    throw err;
   }
 }
+
+async function getGoalRanking(userId) {
+  try {
+    const userActiveGoals = await db.goal.findMany({
+      where: {
+        userId,
+        isFinished: false,
+      },
+      include: {
+        tasks: true,
+      },
+    });
+
+    const goalRaking = await Promise.all(
+      userActiveGoals.map(async (goal) => {
+        const goalStartDate = new Date(goal.createdAt);
+        const goalFinishDate = new Date(goal.deadline);
+        const expectedDays = (goalFinishDate - goalStartDate) / (1000 * 60 * 60 * 24);
+        const dayExpectedHours = goal.weeklyHours / 7;
+        let totalExpectedHours = expectedDays * dayExpectedHours;
+
+        const goalRelatedCycles = await getCycleByGoalId(goal.id);
+        let totalHoursWorked = goalRelatedCycles
+          .filter((cycle) => cycle.interruptedAt === null)
+          .reduce((total, cycle) => total + cycle.minutesAmount, 0) / 60;
+
+        let progressPercentage =
+          totalExpectedHours === 0 ? 0 : (totalHoursWorked / totalExpectedHours) * 100;
+          
+
+        progressPercentage = Number(progressPercentage.toFixed(2));
+        totalExpectedHours = Number(totalExpectedHours.toFixed(2));
+        totalHoursWorked = Number(totalHoursWorked.toFixed(2));
+
+       
+        return {
+          name: goal.goalName,
+          totalExpectedHours,
+          totalHoursWorked,
+          progressPercentage,
+          deadline: goal.deadline,
+        };
+      })
+    );
+
+    goalRaking.sort((a, b) => b.progressPercentage - a.progressPercentage);
+    return goalRaking;
+  } catch (error) {
+    console.error('Error retrieving ranking:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   AddGoal,
   deleteGoal,
   getAllGoals,
   getTodaysGoal,
+  getGoalRanking
 };

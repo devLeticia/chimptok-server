@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 //  keep the token between 5 minutes
 function generateAccessToken(user) {
   return jwt.sign({ userId: user.id }, process.env.JWT_ACCESS_SECRET, {
-    expiresIn: '5m',
+    expiresIn: '7d',
   });
 }
 
@@ -14,7 +14,7 @@ function generateRefreshToken(user, jti) {
     userId: user.id,
     jti,
   }, process.env.JWT_REFRESH_SECRET, {
-    expiresIn: '168h', // seven days
+    expiresIn: '7d', // seven days
   });
 }
 

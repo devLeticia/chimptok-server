@@ -1,11 +1,9 @@
 const bcrypt = require('bcrypt');
 const { db } = require('../../utils/db');
-
+const crypto = require('crypto');
 
 async function saveCancelationReason(user, reasonIds, comment) {
   try {
-
-
     const reasons = await db.cancelationReason.findMany({
       where: {
         id: {
@@ -13,13 +11,10 @@ async function saveCancelationReason(user, reasonIds, comment) {
         }
       }
     });
-   
-    console.log('----------', user)
-
     await db.cancelation.create({
       data: {
-        userEmail: user.email, // Ensure userEmail is included
-        accountCreatedAt: user.createdAt, // Ensure accountCreatedAt is included
+        userEmail: user.email,
+        accountCreatedAt: user.createdAt,
         comment: comment || '',
         reasons: {
           connect: reasons.map(reason => ({ id: reason.id }))
@@ -28,7 +23,7 @@ async function saveCancelationReason(user, reasonIds, comment) {
     });
   } catch (error) {
     console.error('Error saving cancellation reason:', error);
-    throw error; // Re-throw the error to be handled by the caller
+    throw error;
   }
 }
 
@@ -97,16 +92,16 @@ function toggleUserDarkMode(id) {
   });
 }
 
-function updateUserPassword(user, newPassowrd) {
-  return db.user.update({
-    where: {
-      id: user.id,
-    },
-    data: {
-      password: newPassowrd,
-    },
-  });
-}
+// function updateUserPassword(user, newPassowrd) {
+//   return db.user.update({
+//     where: {
+//       id: user.id,
+//     },
+//     data: {
+//       password: newPassowrd,
+//     },
+//   });
+// }
 
 async function revokeRefreshTokens(userId) {
   await db.refreshToken.updateMany({
@@ -157,6 +152,65 @@ async function deleteUser (userId) {
   });
 }
 
+// Save the hashed reset token and expiry time in the user's record
+const updateUserResetToken = async (email, hashedToken, tokenExpiry) => {
+  return db.user.update({
+    where: { email: email },
+    data: {
+      passwordResetToken: hashedToken,
+      passwordResetTokenExpiry: new Date(tokenExpiry),
+    },
+  });
+};
+
+
+
+const findUserByResetToken = async (token) => {
+  const users = await db.user.findMany();
+  for (const user of users) {
+    const isValid = await bcrypt.compare(token, user.passwordResetToken);
+    if (isValid) {
+      return user;
+    }
+  }
+  return null;
+};
+
+// Update the user's password
+const updateUserPassword = async (userId, newPassword) => {
+  return db.user.update({
+    where: { id: userId },
+    data: {
+      password: newPassword,
+      passwordResetToken: null,
+      passwordResetTokenExpiry: null,
+    },
+  });
+};
+const savePasswordResetToken = async (userEmail, resetToken, resetTokenExpiry) => {
+  // const resetToken = generateResetToken();
+  // const resetTokenExpiry = new Date(Date.now() + 3600000); // Token expires in 1 hour (set as a Date object)
+
+  // Store the token and expiry date in the user's record in the database using Prisma
+  await db.user.update({
+    where: {
+      email: userEmail,
+    },
+    data: {
+      passwordResetToken: resetToken,
+      passwordResetTokenExpiry: resetTokenExpiry, // Prisma expects a Date type
+    },
+  });
+
+  return resetToken; // Return to send in the email
+};
+
+const generateResetToken = async () => {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = await bcrypt.hash(resetToken, 10);  // Hash the tokeWn before saving
+  return { resetToken, hashedToken };
+};
+
 module.exports = {
   findUserByEmail,
   findUserById,
@@ -164,11 +218,15 @@ module.exports = {
   findUserByConfirmationCode,
   confirmUserEmail,
   toggleUserDarkMode,
-  updateUserPassword,
   findUserByResetCode,
   revokeRefreshTokens,
   getUserInformation,
   saveCancelationReason,
   getCancelationReasons,
-  deleteUser
+  deleteUser,
+  updateUserPassword,
+  updateUserResetToken,
+  findUserByResetToken,
+  updateUserPassword,
+  savePasswordResetToken
 };

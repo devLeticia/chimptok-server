@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 const {
   findUserByEmail,
@@ -9,12 +10,15 @@ const {
   findUserById,
   findUserByConfirmationCode,
   confirmUserEmail,
-  findUserByResetCode,
-  updateUserPassword,
+  // findUserByResetCode,
+  // updateUserPassword,
   revokeRefreshTokens,
   saveCancelationReason,
   getCancelationReasons,
-  deleteUser
+  deleteUser,
+  updateUserResetToken,
+  findUserByResetToken,
+  updateUserPassword,
 } = require('../users/users.services');
 const { generateTokens } = require('../../utils/jwt');
 const {
@@ -37,15 +41,15 @@ router.post('/register', async (req, res, next) => {
 
   try {
     const { email, password, username } = registerSchema.parse(req.body);
-    // if (!email || !password || !username) {
-    //  res.status(400);
-    //  throw new Error('You must provide an email and a password.');
-    // }
+     if (!email || !password || !username) {
+      res.status(500);
+      throw new Error('You must provide an email and a password.');
+     }
 
     const existingUser = await findUserByEmail(email);
 
     if (existingUser) {
-      res.status(400);
+      res.status(500);
       throw new Error('Email already in use.');
     }
 
@@ -54,18 +58,8 @@ router.post('/register', async (req, res, next) => {
     const user = await createUserByEmailAndPassword({
       email, password, username, confirmationCode,
     });
-    // eslint-disable-next-line no-console
-    console.log('usuario criado>', user);
 
-    // const jti = uuidv4();
-    // const { accessToken, refreshToken } = generateTokens(user, jti);
-    // await addRefreshTokenToWhitelist({ jti, refreshToken, userId: user.id });
-
-    // res.json({
-    //  accessToken,
-    //  refreshToken,
-    // });
-
+    
     nodemailer.sendConfirmationEmail(
       user.username,
       user.email,
@@ -160,9 +154,16 @@ router.post('/login', async (req, res, next) => {
     const { accessToken, refreshToken } = generateTokens(existingUser, jti);
     await addRefreshTokenToWhitelist({ jti, refreshToken, userId: existingUser.id });
 
+    userInfo = {
+      name: existingUser.username,
+      email: existingUser.email,
+      createdAt: existingUser.createdAt,
+    }
+
     res.json({
       accessToken,
       refreshToken,
+      userInfo
     });
   } catch (err) {
     next(err);
@@ -241,58 +242,28 @@ router.post('/revokeRefreshTokens', async (req, res, next) => {
   }
 });
 
-router.post('/forgot-password', async (req, res, next) => {
-  try {
-    const { email } = req.body.userEmail;
-
-    if (!email) {
-      res.status(400);
-      throw new Error('You must provide an email');
-    }
-
-    const existingUser = await findUserByEmail(email);
-    if (!existingUser) {
-      return true;
-    }
-
-    const { username } = existingUser;
-
-    // colocar essa geraão de confirmationCode na parte de JWT com as outras funções
-    // da pra colocar data de expiração aqui
-    const resetCode = jwt.sign(email, process.env.JWT_ACCESS_SECRET);
-
-    nodemailer.sendPasswordResetEmail(
-      username,
-      email,
-      resetCode,
-    );
-  } catch (err) {
-    next(err);
-  }
-  return null;
-});
 
 router.post('/reset-passord', async (req, res, next) => {
-  try {
-    const { resetCode, newPassword } = req.params;
-    const user = await findUserByResetCode(resetCode);
+   const { token, newPassword } = req.body;
 
-    if (!user) {
-      return res.status(404).send({ message: 'User Not found.' });
-    }
+  // Find the user by the token and check if it's still valid
+  const user = await User.findOne({
+    passwordResetToken: token,
+    passwordResetTokenExpiry: { $gt: Date.now() }, // Token hasn't expired
+  });
 
-    const confirmation = await updateUserPassword(user, newPassword);
-
-    if (!confirmation) {
-      return res.status(403).send({ message: 'unable to reset password' });
-    }
-    res.json({
-      confirmation,
-    });
-  } catch (err) {
-    next(err);
+  if (!user) {
+    return res.status(500).json({ message: 'Invalid or expired reset token' });
   }
-  return null;
+
+  // If valid, hash the new password and save it
+  user.password = await hashPassword(newPassword); // Replace with your password hashing logic
+  user.passwordResetToken = undefined; // Clear the token
+  user.passwordResetTokenExpiry = undefined;
+  
+  await user.save();
+
+  return res.status(200).json({ message: 'Password reset successful' });
 });
 
 router.post('/cancel', async (req, res, next) => {
@@ -311,7 +282,7 @@ router.post('/cancel', async (req, res, next) => {
 
     await deleteUser(userId);
 
-    res.json('conta cancelada, usuario deletado');
+    return res.status(200).json({ message: 'conta cancelada, usuario deletado.' });
   } catch (err) {
     next(err);
   }
@@ -325,5 +296,76 @@ router.get('/cancellation-reasons', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch cancellation reasons' });
   }
 });
+
+// Route for "forgot password"
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    // Check if the email exists in the database
+    const user = await findUserByEmail(email);
+    if (!user) {
+      // Generic response to prevent email enumeration attacks
+      return res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
+    }
+
+    // Generate the token and save its hashed version in the database
+    const { resetToken, hashedToken } = await generateResetToken();
+    const tokenExpiry = Date.now() + 3600000; // 1 hour expiration
+
+    // Save the hashed token and expiry to the user's record
+    await updateUserResetToken(user.email, hashedToken, tokenExpiry);
+
+    // Send the reset token to the user's email
+    nodemailer.sendPasswordResetEmail(user.username, user.email, resetToken);
+
+    return res.status(200).json({ message: 'If that email exists, a reset link has been sent.' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+// Route for resetting the password
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Look up the user based on the reset token (hash stored in DB)
+    const user = await findUserByResetToken(token);
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired reset token' });
+    }
+
+    // Check if the token has expired
+    if (user.passwordResetTokenExpiry < Date.now()) {
+      return res.status(400).json({ message: 'Reset token has expired' });
+    }
+
+    // Verify the reset token
+    const validToken = await bcrypt.compare(token, user.passwordResetToken);
+    if (!validToken) {
+      return res.status(400).json({ message: 'Invalid reset token' });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password and clear the reset token/expiry
+    await updateUserPassword(user.id, hashedPassword);
+
+    return res.status(200).json({ message: 'Password reset successful' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const generateResetToken = async () => {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = await bcrypt.hash(resetToken, 10); // Hash the token before saving
+  return { resetToken, hashedToken };
+};
+
+
 
 module.exports = router;

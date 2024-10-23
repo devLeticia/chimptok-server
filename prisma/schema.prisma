@@ -25,6 +25,8 @@ model User {
   goals            Goal[]
   Task             Task[]
   Cycle            Cycle[]
+  passwordResetToken       String?    // Optional field for the reset token
+  passwordResetTokenExpiry DateTime?  // Optional field for token expiry
 }
 
 model RefreshToken {

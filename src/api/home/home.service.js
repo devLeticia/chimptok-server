@@ -1,4 +1,5 @@
 const { db } = require('../../utils/db');
+const { getAllGoals } = require('../goals/goals.service');
 
 function getYear(date) {
   return date.getFullYear();
@@ -16,75 +17,6 @@ function getWeekOfYear(dayOfYear) {
 }
 
 const now = new Date();
-
-// const weekConsistency = [
-//   {
-//     day: 1,
-//     name: 'Mon',
-//     date: '2024-01-22T00:00:00.000Z',
-//     intensity: 0,
-//     totalHoursInTasks: 2,
-//     expectedHours: 4,
-//   },
-//   {
-//     day: 2,
-//     name: 'Tue',
-//     date: '2024-01-22T00:00:00.000Z',
-//     totalHoursInTasks: 2,
-//     intensity: 1,
-//     expectedHours: 4,
-//   },
-//   {
-//     day: 3,
-//     name: 'Wed',
-//     date: '2024-01-23T00:00:00.000Z',
-//     totalHoursInTasks: 2,
-//     intensity: 3,
-//     totalTaskCycles: 2,
-//     totalGoals: 1,
-//     expectedHours: 4,
-//   },
-//   {
-//     day: 4,
-//     name: 'Thu',
-//     date: '2024-01-24T00:00:00.000Z',
-//     totalHoursInTasks: 2,
-//     totalTaskCycles: 2,
-//     intensity: 2,
-//     totalGoals: 1,
-//     expectedHours: 4,
-//   },
-//   {
-//     day: 5,
-//     name: 'Fri',
-//     date: '2024-01-26T00:00:00.000Z',
-//     totalHoursInTasks: 2,
-//     intensity: 2,
-//     totalTaskCycles: 2,
-//     totalGoals: 1,
-//     expectedHours: 4,
-//   },
-//   {
-//     day: 6,
-//     name: 'Sat',
-//     date: '2024-01-27T00:00:00.000Z',
-//     intensity: 0,
-//     totalHoursInTasks: 2,
-//     totalTaskCycles: 2,
-//     totalGoals: 1,
-//     expectedHours: 4,
-//   },
-//   {
-//     day: 7,
-//     name: 'Sun',
-//     date: '2024-01-28T00:00:00.000Z',
-//     intensity: 2,
-//     totalHoursInTasks: 2,
-//     totalTaskCycles: 2,
-//     totalGoals: 1,
-//     expectedHours: 4,
-//   },
-// ];
 
 function getMondayOfCurrentWeek(date) {
   const dayOfWeek = date.getDay(); // Get the day of the week (0-6, where 0 is Sunday)
@@ -108,61 +40,68 @@ async function getConsistencyOfTheWeek(userId) {
       },
     });
 
-    // Get today's date
+  
     const today = new Date();
-
-    // Get Monday of the current week
     const monday = getMondayOfCurrentWeek(new Date(today));
-
-    // Initialize the array to hold the days of the week
     const weekArray = [];
 
-    // Loop to create objects for each day of the week
+   
     for (let i = 0; i < 7; i++) {
       const day = new Date(monday);
-      day.setDate(monday.getDate() + i); // Add i days to Monday to get each day of the week
+      day.setDate(monday.getDate() + i); 
 
       const dayObject = {
-        day: i + 1, // Day number (1 for Monday, 2 for Tuesday, etc.)
+        day: i + 1,
         name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day.getDay()],
-        date: new Date(day.getFullYear(), day.getMonth(), day.getDate()), // Corrected date creation
-        intensity: 0,
-        totalHoursInTasks: 0,
-        expectedHours: 0, // Assuming default expected hours
+        date: new Date(day.getFullYear(), day.getMonth(), day.getDate()),
+        goalOfTheDayInHours: 0,
+        WorkedHoursInTheDay: 0,
       };
+      
+      dayObject.goalOfTheDayInHours = await getGoalsOfTheDayInHours(dayObject.date);
+      dayObject.WorkedHoursInTheDay = await getWorkedHoursInTheDay(dayObject.date);
 
       weekArray.push(dayObject);
     }
 
-    // Filter cycles array for cycles created within the current week
+    async function getGoalsOfTheDayInHours (date) {
+      const allGoals = await getAllGoals(userId);
+      const filteredGoalsByEndDate = allGoals.filter(goal => goal.deadline >= new Date(date));
+      const sumHoursPerWeek = filteredGoalsByEndDate.reduce((total, goal) => total + goal.hoursPerWeek, 0);
+      const goalOfTheDayInHours = sumHoursPerWeek / 7
+      return goalOfTheDayInHours
+    }
+
+    async function getWorkedHoursInTheDay(date) {
+      const cyclesOfTheDay = cycles.filter((cycle) => {
+        const cycleDate = new Date(cycle.createdAt);
+        return cycleDate.getFullYear() === date.getFullYear() &&
+               cycleDate.getMonth() === date.getMonth() &&
+               cycleDate.getDate() === date.getDate();
+      });
+      const sumMinutes = cyclesOfTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
+      const minutesInHours = sumMinutes / 60
+      return minutesInHours;
+    }
+
     const cyclesWithinWeek = cycles.filter((cycle) => {
       const cycleDate = new Date(cycle.createdAt);
-      return cycleDate >= monday && cycleDate <= new Date(weekArray[6].date); // Sunday of the week
+      return cycleDate >= monday && cycleDate <= new Date(weekArray[6].date) && cycle.interruptedAt === null;
     });
 
-    // agora que tenho os dias da semana e os ciclos realizados na semana:
-
-    // pegar o total de horas em cada dia e adicionar no totalHoursintASK
-    weekArray.forEach((day, index) => { // Loop through each day in weekArray
+    weekArray.forEach((day, index) => { 
       const cyclesInTheDay = cyclesWithinWeek.filter((cycle) => {
-        // Convert cycle.createdAt and day.date to Date objects
+       
         const cycleDate = new Date(cycle.createdAt);
         const dayDate = new Date(day.date);
 
         return cycleDate.toISOString().split('T')[0] === dayDate.toISOString().split('T')[0];
       });
 
-      // Calculate total hours for the day based on cyclesInTheDay
+      
       const totalHours = cyclesInTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
 
-      // Update totalHoursInTasks for the day
-      weekArray[index] = {
-        ...weekArray[index], // Copy existing properties
-        totalHoursInTasks: totalHours, // Update totalHoursInTasks
-      };
     });
-
-    // pegar todos os goals ativos e
 
     const consistencyOfTheWeek = {
       year: getYear(now),

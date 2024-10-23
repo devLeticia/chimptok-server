@@ -12,7 +12,7 @@ const auth = require('./auth/auth.routes');
 const users = require('./users/users.routes');
 const goals = require('./goals/goals.routes');
 const cycles = require('./cycles/cycles.routes');
-const reports = require('./users/users.routes');
+const reports = require('./reports/reports.routes');
 const home = require('./home/home.routes');
 
 router.use('/auth', auth);

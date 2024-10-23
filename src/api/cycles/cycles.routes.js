@@ -11,7 +11,6 @@ router.post('/', async (req, res) => {
     taskId,
     minutesAmount,
   } = registerCycleSchema.parse(req.body);
-  console.log('minutesAmount==>', minutesAmount);
   try {
     const response = await AddCycle(
       userId,
