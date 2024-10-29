@@ -42,6 +42,46 @@ async function AddGoal(
     throw error;
   }
 }
+async function findGoalById (goalId) {
+  try {
+    return goal = await db.goal.findUnique({ where: { id: goalId } });
+    
+  } catch (error) {
+    console.error('Error updating goal:', error);
+    throw error;
+  }
+}
+async function updateGoal(goalId, goalName, deadline, weeklyHours, tasks, userId) {
+  try {
+    // Update the goal
+    const updatedGoal = await db.goal.update({
+      where: { id: goalId },
+      data: {
+        goalName,
+        deadline,
+        weeklyHours,
+        tasks: {
+          deleteMany: {}, // Deletes all existing tasks for the goal
+          create: tasks.map((task) => ({
+            taskName: task.taskName,
+            isCompleted: false,
+            user: {
+              connect: { id: userId },
+            },
+          })),
+        },
+      },
+      include: {
+        tasks: true,
+      },
+    });
+
+    return updatedGoal;
+  } catch (error) {
+    console.error('Error updating goal:', error);
+    throw error;
+  }
+}
 
 async function deleteGoal(goalId) {
   try {
@@ -84,7 +124,7 @@ async function getAllGoals(userId) {
         dayAccomplisedHours: 0,
         dayCycles: 0
       },
-      status: 1,
+      isCompleted: false,
     }));
 
     const cycles = await db.cycle.findMany({
@@ -116,7 +156,7 @@ async function getAllGoals(userId) {
         const sumOfCyclesOfTheDayInMinutes = totalCyclesOfTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
         goal.dayProgress.dayExpectedHours = goal.hoursPerWeek / 7
         goal.dayProgress.dayAccomplisedHours = sumOfCyclesOfTheDayInMinutes / 60
-        
+        goal.isCompleted =  goal.overallProgress.overallAccomplisedHours >=  goal.overallProgress.overallExpectedHours
       });
 
     
@@ -234,5 +274,7 @@ module.exports = {
   deleteGoal,
   getAllGoals,
   getTodaysGoal,
-  getGoalRanking
+  getGoalRanking,
+  updateGoal,
+  findGoalById
 };

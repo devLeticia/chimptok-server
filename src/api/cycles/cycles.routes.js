@@ -1,7 +1,7 @@
 // const { v4: uuidv4 } = require('uuid');
 const express = require('express');
 const { registerCycleSchema } = require('../../validators/cycle.validator');
-const { AddCycle, getActiveCycle, getAllCycles } = require('./cycles.service');
+const { AddCycle, getActiveCycle, getAllCycles, interruptCycle, getCycleById } = require('./cycles.service');
 
 const router = express.Router();
 
@@ -45,5 +45,30 @@ router.get('/:userId', async (req, res) => {
   }
   return null;
 });
+
+router.patch('/interrupt/:cycleId', async (req, res) => {
+  const { cycleId } = req.params;
+  const userId = req.body.userId
+
+  try {
+    const cycle = await getCycleById(cycleId)
+
+    if (!cycle) {
+      return res.status(404).json({ error: 'Cycle not found' });
+    }
+    if (cycle.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to modify this cycle' });
+    }
+
+    const response = await interruptCycle(cycleId);
+    return res.status(200).json({ message: 'Ciclo interrompido', data: response });
+
+  } catch (error) {
+    console.error('Error interrupting cycle:', error);
+    return res.status(500).json({ error: 'Failed to interrupt cycle' });
+  }
+});
+
+
 
 module.exports = router;
