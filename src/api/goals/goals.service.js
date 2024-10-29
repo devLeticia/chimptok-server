@@ -32,7 +32,7 @@ async function AddGoal(
         },
       },
       include: {
-        tasks: true, // Include associated tasks in the response
+        tasks: true,
       },
     });
 
@@ -53,7 +53,6 @@ async function findGoalById (goalId) {
 }
 async function updateGoal(goalId, goalName, deadline, weeklyHours, tasks, userId) {
   try {
-    // Update the goal
     const updatedGoal = await db.goal.update({
       where: { id: goalId },
       data: {
@@ -61,7 +60,7 @@ async function updateGoal(goalId, goalName, deadline, weeklyHours, tasks, userId
         deadline,
         weeklyHours,
         tasks: {
-          deleteMany: {}, // Deletes all existing tasks for the goal
+          deleteMany: {},
           create: tasks.map((task) => ({
             taskName: task.taskName,
             isCompleted: false,
