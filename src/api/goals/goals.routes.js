@@ -5,7 +5,7 @@ const { findUserById } = require('../users/users.services');
 const router = express.Router();
 
 const { registerGoalSchema } = require('../../validators/goal.validator');
-const { AddGoal, deleteGoal, getAllGoals, updateGoal, findGoalById } = require('./goals.service');
+const { AddGoal, deleteGoal, getAllGoals, updateGoal, findGoalById, setIsCompleted } = require('./goals.service');
 
 router.post('/', async (req, res, next) => {
   try {
@@ -72,6 +72,26 @@ router.put('/:goalId', async (req, res, next) => {
     if (updatedGoal) return res.status(200).json({ message: 'Updated successfully', updatedGoal });
   } catch (error) {
     next(error);
+  }
+});
+
+router.put('/:id/completed', async (req, res) => {
+  const { id } = req.params;
+  const { completed } = req.body; // Expecting { "completed": true/false } in the request body
+
+  if (typeof completed !== 'boolean') {
+    return res.status(400).json({ error: 'Invalid value for completed. Must be true or false.' });
+  }
+
+  try {
+    const response = await setIsCompleted(id, completed);
+    res.status(200).json({
+      message: `Goal marked as ${completed ? 'completed' : 'not completed'} successfully`,
+      goal: response,
+    });
+  } catch (error) {
+    console.error('Error setting goal flag isCompleted:', error);
+    res.status(500).json({ error: 'Failed to set flag' });
   }
 });
 

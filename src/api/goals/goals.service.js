@@ -123,7 +123,7 @@ async function getAllGoals(userId) {
         dayAccomplisedHours: 0,
         dayCycles: 0
       },
-      isCompleted: false,
+      isCompleted: goal.isCompleted,
     }));
 
     const cycles = await db.cycle.findMany({
@@ -155,7 +155,6 @@ async function getAllGoals(userId) {
         const sumOfCyclesOfTheDayInMinutes = totalCyclesOfTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
         goal.dayProgress.dayExpectedHours = goal.hoursPerWeek / 7
         goal.dayProgress.dayAccomplisedHours = sumOfCyclesOfTheDayInMinutes / 60
-        goal.isCompleted =  goal.overallProgress.overallAccomplisedHours >=  goal.overallProgress.overallExpectedHours
       });
 
     
@@ -171,7 +170,7 @@ async function getTodaysGoal(userId) {
     const goals = await db.goal.findMany({
       where: {
         userId,
-        isFinished: false,
+        isCompleted: false,
       },
       include: {
         tasks: true,
@@ -221,7 +220,7 @@ async function getGoalRanking(userId) {
     const userActiveGoals = await db.goal.findMany({
       where: {
         userId,
-        isFinished: false,
+        isCompleted: false,
       },
       include: {
         tasks: true,
@@ -268,6 +267,19 @@ async function getGoalRanking(userId) {
   }
 }
 
+async function setIsCompleted(id, completed) {
+  console.log('entrou')
+  try {
+    const updatedGoal = await db.goal.update({
+      where: { id: id },
+      data: { isCompleted: completed },
+    });
+    return updatedGoal;
+  } catch (error) {
+    throw error;
+  }
+}
+
 module.exports = {
   AddGoal,
   deleteGoal,
@@ -275,5 +287,6 @@ module.exports = {
   getTodaysGoal,
   getGoalRanking,
   updateGoal,
-  findGoalById
+  findGoalById,
+  setIsCompleted
 };
