@@ -3,9 +3,10 @@ const { savePasswordResetToken } = require('../api/users/users.services');
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
+const clientUrl = process.env.WEB_CLIENT_URL
 
 module.exports.sendPasswordResetEmail = async (name, email, resetToken) => {
-  const resetPasswordLink = `${proccess.env.WEB_CLIENT_URL}/reset-password/${resetToken}`; // Replace with your frontend URL
+  const resetPasswordLink = `${clientUrl}/reset-password/${resetToken}`; // Replace with your frontend URL
 
   const msg = {
     to: email,
@@ -29,7 +30,7 @@ module.exports.sendPasswordResetEmail = async (name, email, resetToken) => {
 
 module.exports.sendConfirmationEmail = (name, email, confirmationCode) => {
   const encodedConfirmationCode = Buffer.from(confirmationCode).toString('base64');
-  const confirmationLink = `${proccess.env.WEB_CLIENT_URL}/account-confirmation/${encodedConfirmationCode}`; // url do front, que vai pegar o confirmation code e vai mandar pro backend conferir
+  const confirmationLink = `${clientUrl}/account-confirmation/${encodedConfirmationCode}`; // url do front, que vai pegar o confirmation code e vai mandar pro backend conferir
 
   const msg = {
     to: email,
