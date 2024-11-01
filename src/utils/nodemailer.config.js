@@ -5,7 +5,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 
 module.exports.sendPasswordResetEmail = async (name, email, resetToken) => {
-  const resetPasswordLink = `http://localhost:4000/reset-password/${resetToken}`; // Replace with your frontend URL
+  const resetPasswordLink = `${proccess.env.WEB_CLIENT_URL}/reset-password/${resetToken}`; // Replace with your frontend URL
 
   const msg = {
     to: email,
@@ -29,7 +29,7 @@ module.exports.sendPasswordResetEmail = async (name, email, resetToken) => {
 
 module.exports.sendConfirmationEmail = (name, email, confirmationCode) => {
   const encodedConfirmationCode = Buffer.from(confirmationCode).toString('base64');
-  const confirmationLink = `http://localhost:4000/account-confirmation/${encodedConfirmationCode}`; // url do front, que vai pegar o confirmation code e vai mandar pro backend conferir
+  const confirmationLink = `${proccess.env.WEB_CLIENT_URL}/account-confirmation/${encodedConfirmationCode}`; // url do front, que vai pegar o confirmation code e vai mandar pro backend conferir
 
   const msg = {
     to: email,
