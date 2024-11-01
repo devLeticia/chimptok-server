@@ -8,7 +8,8 @@
     "dev": "nodemon src/index.js",
     "lint": "eslint --fix src",
     "test": "jest",
-    "seed": "ts-node prisma/seeders/seedCancelationReasons.js"
+    "seed": "ts-node prisma/seeders/seedCancelationReasons.js",
+    "migrate": "npx prisma migrate deploy"
   },
   "keywords": [],
   "license": "MIT",
