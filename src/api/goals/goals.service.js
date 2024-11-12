@@ -115,12 +115,12 @@ async function getAllGoals(userId) {
       hoursPerWeek: goal.weeklyHours,
       overallProgress: {
         overallExpectedHours: 0,
-        overallAccomplisedHours: 0,
+        overallAccomplishedHours: 0,
         overallCycles: 0
       },
       dayProgress: {
         dayExpectedHours: 0,
-        dayAccomplisedHours: 0,
+        dayAccomplishedHours: 0,
         dayCycles: 0
       },
       isCompleted: goal.isCompleted,
@@ -142,9 +142,9 @@ async function getAllGoals(userId) {
     mappedGoals.forEach(goal => {
        const goalCycles = cycles.filter(cycle => cycle.task.goalId === goal.id && cycle.interruptedAt === null);
        const sumOfCyclesInMinutes = goalCycles.reduce((total, cycle) => total + cycle.minutesAmount, 0);
-       const overallAccomplisedHours =  sumOfCyclesInMinutes / 60
+       const overallAccomplishedHours =  sumOfCyclesInMinutes / 60
         goal.overallProgress.overallExpectedHours = goal.hoursPerWeek
-        goal.overallProgress.overallAccomplisedHours = overallAccomplisedHours 
+        goal.overallProgress.overallAccomplishedHours = overallAccomplishedHours 
 
         const today = new Date()
         const totalCyclesOfTheDay =  cycles.filter(cycle => cycle.task.goalId === goal.id && cycle.interruptedAt === null &&
@@ -154,7 +154,7 @@ async function getAllGoals(userId) {
           );
         const sumOfCyclesOfTheDayInMinutes = totalCyclesOfTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
         goal.dayProgress.dayExpectedHours = goal.hoursPerWeek / 7
-        goal.dayProgress.dayAccomplisedHours = sumOfCyclesOfTheDayInMinutes / 60
+        goal.dayProgress.dayAccomplishedHours = sumOfCyclesOfTheDayInMinutes / 60
       });
 
     

@@ -164,38 +164,38 @@ async function getUserStats (userId) {
   return userStats
   }
 
- function getUserBestStreak(cycles) {
-  if (!cycles || cycles.length === 0) return 0;
+  function getUserBestStreak(cycles) {
+    if (!cycles || cycles.length === 0) return 0;
+  
+    
+    const dates = cycles
+      .map(cycle => new Date(cycle.createdAt).toISOString().split('T')[0]) 
+      .sort((a, b) => new Date(a) - new Date(b)); 
+  
+    let currentStreak = 1; 
+    let bestStreak = 1; 
+  
 
-
-  const dates = cycles
-    .map(cycle => new Date(cycle.createdAt).toISOString().split('T')[0])
-    .sort((a, b) => new Date(a) - new Date(b)); 
-
-  let currentStreak = 1; 
-  let bestStreak = 1;
-
- 
-  for (let i = 1; i < dates.length; i++) {
-    const currentDate = new Date(dates[i]);
-    const previousDate = new Date(dates[i - 1]);
-
-   
-    const dayDifference = (currentDate - previousDate) / (1000 * 60 * 60 * 24);
-
-    if (dayDifference === 1) {
-      currentStreak++;
-    } else if (dayDifference > 1) {
-      currentStreak = 1;
+    for (let i = 1; i < dates.length; i++) {
+      const currentDate = new Date(dates[i]);
+      const previousDate = new Date(dates[i - 1]);
+  
+      const dayDifference = (currentDate - previousDate) / (1000 * 60 * 60 * 24);
+  
+      if (dayDifference === 1) {
+        currentStreak++;
+      } else if (dayDifference > 1) {
+        currentStreak = 1;
+      }
+  
+      if (currentStreak > bestStreak) {
+        bestStreak = currentStreak;
+      }
     }
-
-    if (currentStreak > bestStreak) {
-      bestStreak = currentStreak;
-    }
-
-    return bestStreak
+  
+    return bestStreak;
   }
-}
+  
 
 async function getLastTwoWeeksConsistency(userId) {
   const cycles = await getAllCycles(userId);
