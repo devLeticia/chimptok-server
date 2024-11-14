@@ -6,7 +6,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 const clientUrl = process.env.WEB_CLIENT_URL
 
 module.exports.sendPasswordResetEmail = async (name, email, resetToken) => {
-  const resetPasswordLink = `${clientUrl}/reset-password/${resetToken}`;
+  const resetPasswordLink = `${clientUrl}reset-password/${resetToken}`;
 
   const msg = {
     to: email,
@@ -30,7 +30,7 @@ module.exports.sendPasswordResetEmail = async (name, email, resetToken) => {
 
 module.exports.sendConfirmationEmail = (name, email, confirmationCode) => {
   const encodedConfirmationCode = Buffer.from(confirmationCode).toString('base64');
-  const confirmationLink = `${clientUrl}/account-confirmation/${encodedConfirmationCode}`;
+  const confirmationLink = `${clientUrl}account-confirmation/${encodedConfirmationCode}`;
 
   const msg = {
     to: email,
