@@ -23,8 +23,8 @@ router.get('/:userId', async (req, res, next) => {
       const consistencyOfTheWeek = await getConsistencyOfTheWeek(userId);
 
       const homeData = {
-        userGoals: activeGoals, // working \o/
-        activeCycle, // working \o/ - BUT, when I interrupt the task, it still is retrieving as active goal.
+        userGoals: activeGoals, 
+        activeCycle,
         progressOfTheDay, 
         consistencyOfTheWeek,
       };

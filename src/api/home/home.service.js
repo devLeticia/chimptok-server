@@ -2,11 +2,11 @@ const { db } = require('../../utils/db');
 const { getAllGoals } = require('../goals/goals.service');
 
 function getYear(date) {
-  return date.getFullYear();
+  return date.getUTCFullYear();
 }
 
 function getDayOfYear(date) {
-  const startOfYear = new Date(date.getFullYear(), 0, 0);
+  const startOfYear = new Date(Date.UTC(date.getUTCFullYear(), 0, 0));
   const diff = date - startOfYear;
   const oneDay = 1000 * 60 * 60 * 24;
   return Math.floor(diff / oneDay);
@@ -19,12 +19,12 @@ function getWeekOfYear(dayOfYear) {
 const now = new Date();
 
 function getMondayOfCurrentWeek(date) {
-  const dayOfWeek = date.getDay(); // Get the day of the week (0-6, where 0 is Sunday)
-  const diff = date.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
-  // Calculate difference to Monday
-  date.setDate(diff); // Set date to Monday of current week
+  const dayOfWeek = date.getUTCDay(); 
+  const diff = date.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+  date.setUTCDate(diff);
   return date;
 }
+
 async function getConsistencyOfTheWeek(userId) {
   try {
     const cycles = await db.cycle.findMany({
@@ -34,26 +34,24 @@ async function getConsistencyOfTheWeek(userId) {
       include: {
         task: {
           include: {
-            goal: true, // Include the goal relation within the task relation
+            goal: true,
           },
         },
       },
     });
 
-  
     const today = new Date();
     const monday = getMondayOfCurrentWeek(new Date(today));
     const weekArray = [];
 
-   
     for (let i = 0; i < 7; i++) {
       const day = new Date(monday);
-      day.setDate(monday.getDate() + i); 
+      day.setUTCDate(monday.getUTCDate() + i);
 
       const dayObject = {
         day: i + 1,
-        name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day.getDay()],
-        date: new Date(day.getFullYear(), day.getMonth(), day.getDate()),
+        name: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][day.getUTCDay()],
+        date: new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth(), day.getUTCDate())),
         goalOfTheDayInHours: 0,
         WorkedHoursInTheDay: 0,
       };
@@ -64,50 +62,36 @@ async function getConsistencyOfTheWeek(userId) {
       weekArray.push(dayObject);
     }
 
-    async function getGoalsOfTheDayInHours (date) {
+    async function getGoalsOfTheDayInHours(date) {
       const allGoals = await getAllGoals(userId);
       const filteredGoalsByEndDate = allGoals.filter(goal => goal.deadline >= new Date(date));
       const sumHoursPerWeek = filteredGoalsByEndDate.reduce((total, goal) => total + goal.hoursPerWeek, 0);
-      const goalOfTheDayInHours = sumHoursPerWeek / 7
-      return goalOfTheDayInHours
+      return sumHoursPerWeek / 7;
     }
 
     async function getWorkedHoursInTheDay(date) {
       const cyclesOfTheDay = cycles.filter((cycle) => {
         const cycleDate = new Date(cycle.createdAt);
-        return cycleDate.getFullYear() === date.getFullYear() &&
-               cycleDate.getMonth() === date.getMonth() &&
-               cycleDate.getDate() === date.getDate();
+        return cycleDate.getUTCFullYear() === date.getUTCFullYear() &&
+               cycleDate.getUTCMonth() === date.getUTCMonth() &&
+               cycleDate.getUTCDate() === date.getUTCDate();
       });
       const sumMinutes = cyclesOfTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
-      const minutesInHours = sumMinutes / 60
-      return minutesInHours;
+      return sumMinutes / 60;
     }
 
     const cyclesWithinWeek = cycles.filter((cycle) => {
       const cycleDate = new Date(cycle.createdAt);
-      return cycleDate >= monday && cycleDate <= new Date(weekArray[6].date) && cycle.interruptedAt === null;
-    });
-
-    weekArray.forEach((day, index) => { 
-      const cyclesInTheDay = cyclesWithinWeek.filter((cycle) => {
-       
-        const cycleDate = new Date(cycle.createdAt);
-        const dayDate = new Date(day.date);
-
-        return cycleDate.toISOString().split('T')[0] === dayDate.toISOString().split('T')[0];
-      });
-
-      
-      const totalHours = cyclesInTheDay.reduce((total, cycle) => total + cycle.minutesAmount, 0);
-
+      return cycleDate >= new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate())) &&
+             cycleDate <= new Date(Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate() + 6)) &&
+             cycle.interruptedAt === null;
     });
 
     const consistencyOfTheWeek = {
       year: getYear(now),
       weekOfTheYear: getWeekOfYear(getDayOfYear(now)),
       dayOfTheYear: getDayOfYear(now),
-      todayDate: now,
+      todayDate: now.toISOString(),
       weekConsistency: weekArray,
     };
     return consistencyOfTheWeek;
